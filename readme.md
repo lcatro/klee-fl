@@ -11,7 +11,7 @@
 
 ```sh
 
-	sh ./build_kleefl.sh
+sh ./build_kleefl.sh
 
 ```
 
@@ -19,8 +19,8 @@
 
 ```sh
 
-	cd test_code/
-	vim test_fuzzing_entry.c
+cd test_code/
+vim test_fuzzing_entry.c
 
 ```
 
@@ -28,24 +28,24 @@
 
 ```c
 
-	#include <memory.h>
-	#include <stdio.h>
-	#include <stdlib.h>
+#include <memory.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-	#include "klee/klee.h"
+#include "klee/klee.h"
 
-	#include "test_code.h"
+#include "test_code.h"
 
 
-	int KleeFuzzingEntry(int argc,char** argv) {
-	  char buffer[0x10];
+int KleeFuzzingEntry(int argc,char** argv) {
+  char buffer[0x10];
 
-	  printf("sizeof buffer = %lu\n",sizeof buffer);
+  printf("sizeof buffer = %lu\n",sizeof buffer);
 
-	  klee_make_symbolic(&buffer, sizeof buffer, "buffer");
+  klee_make_symbolic(&buffer, sizeof buffer, "buffer");
 
-	  return (int)get_message(buffer);
-	}
+  return (int)get_message(buffer);
+}
 
 ```
 
@@ -53,8 +53,8 @@
 
 ```sh
 
-	./configure CC=klee-clang
-	make
+./configure CC=klee-clang
+make
 
 ```
 
@@ -62,7 +62,7 @@
 
 ```sh
 
-	klee-build -bc ./test_fuzzing_entry.c
+klee-build -bc ./test_fuzzing_entry.c
 
 ```
 
@@ -70,7 +70,7 @@
 
 ```sh
 
-	klee-build -bf .
+klee-build -bf .
 
 ```
 
@@ -78,7 +78,7 @@
 
 ```sh
 
-	sh run_fuzz.sh klee_fuzzer.bca
+sh run_fuzz.sh klee_fuzzer.bca
 
 ```
 
@@ -86,47 +86,47 @@
 
 ```sh
 
-	MacBook-Pro-2:test_code root$ sh run_fuzz.sh klee_fuzzer.bca 
-	Output Klee Execute Command :
-	klee -libc=klee -entry-point KleeFuzzingEntry klee_fuzzer.bca
-	KLEE: output directory is "/Users/fc/Desktop/code_file/klee-fl/test_code/klee-out-0"
-	KLEE: Using Z3 solver backend
-	KLEE: WARNING: undefined reference to function: _fopen
-	KLEE: WARNING: undefined reference to function: __memcpy_chk
-	KLEE: WARNING: undefined reference to function: fclose
-	KLEE: WARNING: undefined reference to function: fread
-	KLEE: WARNING: undefined reference to function: fseek
-	KLEE: WARNING: undefined reference to function: ftell
-	KLEE: WARNING: undefined reference to function: printf
-	KLEE: WARNING: undefined reference to function: puts
-	KLEE: WARNING ONCE: calling external: printf(4687755904, 16) at test_fuzzing_entry.c:17 22
-	KLEE: ERROR: test_code.c:17: concretized symbolic size
-	KLEE: NOTE: now ignoring this error at this location
-	KLEE: WARNING ONCE: Alignment of memory from call "malloc" is not modelled. Using alignment of 8.
-	KLEE: WARNING ONCE: calling external: __memcpy_chk(4696031232, 4681917186, (ZExt w64 (ReadLSB w32 2 buffer)), 18446744073709551615) at /Users/fc/Desktop/code_file/klee-fl/test_code/test_code.c:9 0
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: WARNING ONCE: Large alloc: 33554431 bytes.  KLEE may run out of memory.
-	KLEE: ERROR: test_code.c:19: failed external call: __memcpy_chk
-	KLEE: NOTE: now ignoring this error at this location
-	KLEE: ERROR: test_code.c:19: external call with symbolic argument: __memcpy_chk
-	KLEE: NOTE: now ignoring this error at this location
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: ERROR: /Users/fc/Desktop/code_file/klee/runtime/klee-libc/strlen.c:14: memory error: out of bound pointer
-	KLEE: NOTE: now ignoring this error at this location
-	KLEE: NOTE: found huge malloc, returning 0
-	KLEE: NOTE: found huge malloc, returning 0
+MacBook-Pro-2:test_code root$ sh run_fuzz.sh klee_fuzzer.bca 
+Output Klee Execute Command :
+klee -libc=klee -entry-point KleeFuzzingEntry klee_fuzzer.bca
+KLEE: output directory is "/Users/fc/Desktop/code_file/klee-fl/test_code/klee-out-0"
+KLEE: Using Z3 solver backend
+KLEE: WARNING: undefined reference to function: _fopen
+KLEE: WARNING: undefined reference to function: __memcpy_chk
+KLEE: WARNING: undefined reference to function: fclose
+KLEE: WARNING: undefined reference to function: fread
+KLEE: WARNING: undefined reference to function: fseek
+KLEE: WARNING: undefined reference to function: ftell
+KLEE: WARNING: undefined reference to function: printf
+KLEE: WARNING: undefined reference to function: puts
+KLEE: WARNING ONCE: calling external: printf(4687755904, 16) at test_fuzzing_entry.c:17 22
+KLEE: ERROR: test_code.c:17: concretized symbolic size
+KLEE: NOTE: now ignoring this error at this location
+KLEE: WARNING ONCE: Alignment of memory from call "malloc" is not modelled. Using alignment of 8.
+KLEE: WARNING ONCE: calling external: __memcpy_chk(4696031232, 4681917186, (ZExt w64 (ReadLSB w32 2 buffer)), 18446744073709551615) at /Users/fc/Desktop/code_file/klee-fl/test_code/test_code.c:9 0
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: WARNING ONCE: Large alloc: 33554431 bytes.  KLEE may run out of memory.
+KLEE: ERROR: test_code.c:19: failed external call: __memcpy_chk
+KLEE: NOTE: now ignoring this error at this location
+KLEE: ERROR: test_code.c:19: external call with symbolic argument: __memcpy_chk
+KLEE: NOTE: now ignoring this error at this location
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: ERROR: /Users/fc/Desktop/code_file/klee/runtime/klee-libc/strlen.c:14: memory error: out of bound pointer
+KLEE: NOTE: now ignoring this error at this location
+KLEE: NOTE: found huge malloc, returning 0
+KLEE: NOTE: found huge malloc, returning 0
 
-	KLEE: done: total instructions = 563
-	KLEE: done: completed paths = 60
-	KLEE: done: generated tests = 32
-	sizeof buffer = 16
-	MacBook-Pro-2:test_code root$ 
+KLEE: done: total instructions = 563
+KLEE: done: completed paths = 60
+KLEE: done: generated tests = 32
+sizeof buffer = 16
+MacBook-Pro-2:test_code root$ 
 
 ```
 
@@ -134,16 +134,16 @@
 
 ```sh
 
-	MacBook-Pro-2:test_code root$ ktest-tool klee-out-0/test000008.ktest 
-	ktest file : 'klee-out-0/test000008.ktest'
-	args       : ['klee_fuzzer.bca']
-	num objects: 1
-	object 0: name: 'buffer'
-	object 0: size: 16
-	object 0: data: b'F\x01\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
-	object 0: hex : 0x4601ffffff00ffffffffffffffffffff
-	object 0: text: F...............
-	MacBook-Pro-2:test_code root$ 
+MacBook-Pro-2:test_code root$ ktest-tool klee-out-0/test000008.ktest 
+ktest file : 'klee-out-0/test000008.ktest'
+args       : ['klee_fuzzer.bca']
+num objects: 1
+object 0: name: 'buffer'
+object 0: size: 16
+object 0: data: b'F\x01\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+object 0: hex : 0x4601ffffff00ffffffffffffffffffff
+object 0: text: F...............
+MacBook-Pro-2:test_code root$ 
 
 ```
 
@@ -156,7 +156,7 @@
 
 ```txt
 
-	LLVM_COMPILER_PATH=~/Desktop/code_file/llvm make
+LLVM_COMPILER_PATH=~/Desktop/code_file/llvm make
 
 ```
 
@@ -164,8 +164,8 @@
 
 ```txt
 
-	export LLVM_COMPILER_PATH=~/Desktop/code_file/llvm
-	make
+export LLVM_COMPILER_PATH=~/Desktop/code_file/llvm
+make
 
 ```
 
@@ -175,7 +175,7 @@
 
 ```txt
 
-	KFL_CLANG=clang4 make
+KFL_CLANG=clang4 make
 
 ```
 
@@ -183,8 +183,8 @@
 
 ```txt
 
-	export KFL_CLANG=clang4
-	make
+export KFL_CLANG=clang4
+make
 
 ```
 
@@ -194,7 +194,7 @@
 
 ```txt
 
-	KFL_CLANGXX=clang++4 make
+KFL_CLANGXX=clang++4 make
 
 ```
 
@@ -202,8 +202,8 @@
 
 ```txt
 
-	export KFL_CLANGXX=clang++4
-	make
+export KFL_CLANGXX=clang++4
+make
 
 ```
 
@@ -213,7 +213,7 @@
 
 ```txt
 
-	KFL_LLVM_AR=./llvm3.3/llvm-ar make
+KFL_LLVM_AR=./llvm3.3/llvm-ar make
 
 ```
 
@@ -221,8 +221,8 @@
 
 ```txt
 
-	export KFL_LLVM_AR=./llvm3.3/llvm-ar
-	make
+export KFL_LLVM_AR=./llvm3.3/llvm-ar
+make
 
 ```
 
@@ -233,7 +233,7 @@
 
 ```txt
 
-	KFL_CFLAG="-g -I." make
+KFL_CFLAG="-g -I." make
 
 ```
 
@@ -241,8 +241,8 @@
 
 ```txt
 
-	export KFL_CFLAG="-g -I."
-	make
+export KFL_CFLAG="-g -I."
+make
 
 ```
 

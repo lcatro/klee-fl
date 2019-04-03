@@ -51,8 +51,11 @@ std::string get_clang_path(void) {
     result_path += "/";
     result_path += clang_path;
 
-    if (!access(result_path.c_str(),F_OK))
+    if (!access(result_path.c_str(),F_OK)) {
+        errno = 0;
+
         return result_path;
+    }
 
     result_path = clang_path;
 
@@ -71,8 +74,11 @@ std::string get_clangpp_path(void) {
     result_path += "/";
     result_path += clangpp_path;
 
-    if (!access(result_path.c_str(),F_OK))
+    if (!access(result_path.c_str(),F_OK)) {
+        errno = 0;
+
         return result_path;
+    }
 
     result_path = clangpp_path;
 
@@ -91,8 +97,11 @@ std::string get_llvm_ar_path(void) {
     result_path += "/";
     result_path += llvm_ar_path;
 
-    if (!access(result_path.c_str(),F_OK))
+    if (!access(result_path.c_str(),F_OK)) {
+        errno = 0;
+
         return result_path;
+    }
 
     result_path = llvm_ar_path;
 
@@ -230,19 +239,21 @@ void print_parameters(char** parameter_list) {
 }
 
 void print_help(void) {
-    printf("Using : [ KFL_CFLAG=\"-I.\" ] klee-build %%Fuzzer_Path%% %%Project_Build_Dir%%\n");
+    printf("Using : [ KFL_CFLAG=\"-I.\" ] klee-build %%Fuzzer_Path%% %%Project_Build_Dir%% [ import_file1 import_file2 .. ]\n");
     //printf("  -bc : build fuzzer to LLVM BitCode\n");
     //printf("  -bf : build fuzzer for klee fuzzing\n");
     printf("  Fuzzer_Path : Custom Fuzzer Path\n");
     printf("  Project_Build_Dir : Project Path\n");
+    printf("  import_file : Import Link File Path\n");
     printf("  KFL_CFLAG : Custom Compiler Flags\n");
     printf("Example : \n");
-    printf("  ./klee-build -bc ./test_code/test_fuzzing_entry.c ./test_code/\n");
+    printf("  ./klee-build ./test_code/test_fuzzing_entry.c ./test_code/\n");
+    printf("  klee-build klee_fuzzer.c . libcares_la-ares_create_query.bc libcares_la-ares_library_init.bc\n");
     //printf("  ./klee-build -bc ./test_code/test_fuzzing_entry.c\n");
     //printf("  ./klee-build -bf ./test_code\n");
 }
 
-int compile_fuzzer_to_bitcode(const char* fuzzer_path) {
+std::string compile_fuzzer_to_bitcode(const char* fuzzer_path) {
     std::string call_parameters;
     std::string compiler_flags = get_compiler_flags();
     std::string output_path = fuzzer_path;
@@ -269,12 +280,12 @@ int compile_fuzzer_to_bitcode(const char* fuzzer_path) {
     printf("errno = %d\n",errno);
 
     if (errno)
-        return 0;
+        return "";
 
-    return 1;
+    return output_path;
 }
 
-int compile_fuzzer_to_lib(const char* project_path,path_list* llvm_bitcode_file_list,unsigned int file_count) {
+void compile_fuzzer_to_lib(const char* project_path,path_list* llvm_bitcode_file_list,unsigned int file_count) {
     std::string call_parameters;
     std::string output_path = project_path;
     output_path += "/klee_fuzzer.bca";
@@ -296,20 +307,16 @@ int compile_fuzzer_to_lib(const char* project_path,path_list* llvm_bitcode_file_
 
     if (!access(output_path.c_str(),F_OK))
         remove(output_path.c_str());
+    else
+        errno = 0;
 
     execute(call_parameters.c_str());
-    printf("errno = %d\n",errno);
 
     delete filter_list;
-
-    if (errno)
-        return 0;
-
-    return 1;
 }
 
 int main(int argc,char** argv) {
-    if (3 != argc) {
+    if (3 > argc) {
         print_help();
 
         return 1;
@@ -320,18 +327,31 @@ int main(int argc,char** argv) {
 
     printf("Ready to Compiler Fuzzer \n");
 
-    if (!compile_fuzzer_to_bitcode(fuzzer_path)) {
+    std::string output_bitcode_path = compile_fuzzer_to_bitcode(fuzzer_path);
+
+    if (output_bitcode_path.empty()) {
         printf("Compile Fuzzer to BitCode Error ! ..\n");
 
         return 1;
     }
 
-    path_list* llvm_bitcode_file_list = list_dir(std::string(project_path));
+    path_list* llvm_bitcode_file_list = NULL;
 
-    if (NULL == llvm_bitcode_file_list) {
-        printf("project_path(%s) is Error Dir Path ..\n",project_path);
+    if (3 == argc) {
+        llvm_bitcode_file_list = list_dir(std::string(project_path));
 
-        return 1;
+        if (NULL == llvm_bitcode_file_list) {
+            printf("project_path(%s) is Error Dir Path ..\n",project_path);
+
+            return 1;
+        }
+    } else {
+        llvm_bitcode_file_list = new path_list;
+
+        for (int import_path_index = 3;import_path_index < argc;++import_path_index)
+            llvm_bitcode_file_list->push_back(std::string(argv[import_path_index]));
+
+        llvm_bitcode_file_list->push_back(output_bitcode_path);
     }
 
     unsigned int file_count = print_dir_file(llvm_bitcode_file_list);
@@ -347,11 +367,7 @@ int main(int argc,char** argv) {
 
     printf("Ready to Compiler Lib \n");
 
-    if (!compile_fuzzer_to_lib(project_path,llvm_bitcode_file_list,file_count)) {
-        printf("Link Fuzzer to lib Error ! ..\n");
-
-        return 1;
-    }
+    compile_fuzzer_to_lib(project_path,llvm_bitcode_file_list,file_count);
 
     printf("Compile All Success ..\n");
 

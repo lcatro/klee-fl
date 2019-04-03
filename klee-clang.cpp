@@ -43,8 +43,11 @@ std::string get_clang_path(void) {
     result_path += "/";
     result_path += clang_path;
 
-    if (!access(result_path.c_str(),F_OK))
+    if (!access(result_path.c_str(),F_OK)) {
+        errno = 0;
+
         return result_path;
+    }
 
     result_path = clang_path;
 
@@ -63,8 +66,11 @@ std::string get_clangpp_path(void) {
     result_path += "/";
     result_path += clangpp_path;
 
-    if (!access(result_path.c_str(),F_OK))
+    if (!access(result_path.c_str(),F_OK)) {
+        errno = 0;
+
         return result_path;
+    }
 
     result_path = clangpp_path;
 
@@ -83,8 +89,11 @@ std::string get_llvm_ar_path(void) {
     result_path += "/";
     result_path += llvm_ar_path;
 
-    if (!access(result_path.c_str(),F_OK))
+    if (!access(result_path.c_str(),F_OK)) {
+        errno = 0;
+
         return result_path;
+    }
 
     result_path = llvm_ar_path;
 

@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <string>
+
 
 #define CONFIGURE_OUTPUT_TEST_FILE "conftest"
 #define CONFIGURE_INPUT_TEST_FILE "conftest.c"
@@ -17,7 +19,10 @@
 #define LLVM_COMPILER_PATH "/usr/bin/"
 
 
-char* get_llvm_compiler_path(void) {
+using namespace std;
+
+
+const char* get_llvm_compiler_path(void) {
     char* llvm_compiler_path = getenv("LLVM_COMPILER_PATH");
 
     if (!llvm_compiler_path)
@@ -26,76 +31,76 @@ char* get_llvm_compiler_path(void) {
     return llvm_compiler_path;
 }
 
-const char* get_clang_path(void) {
-    char* clang_path = getenv("KFL_CLANG");
+std::string get_clang_path(void) {
+    const char* clang_path = getenv("KFL_CLANG");
 
     if (!clang_path)
         clang_path = CLANG_PATH;
 
-    char* llvm_path = get_llvm_compiler_path();
-    unsigned int buffer_length = strlen(clang_path) + strlen(llvm_path) + 2;
-    char* result_path = (char*)malloc(buffer_length);
+    const char* llvm_path = get_llvm_compiler_path();
+    std::string result_path = llvm_path;
 
-    memset(result_path,0,buffer_length);
-    memcpy(result_path,llvm_path,strlen(llvm_path));
-    memcpy(&result_path[strlen(llvm_path)],"/",1);
-    memcpy(&result_path[strlen(llvm_path) + 1],clang_path,strlen(clang_path));
+    result_path += "/";
+    result_path += clang_path;
 
-    if (!access(result_path,F_OK))
+    if (!access(result_path.c_str(),F_OK))
         return result_path;
 
-    return clang_path;
+    result_path = clang_path;
+
+    return result_path;
 }
 
-const char* get_clangpp_path(void) {
-    char* clangpp_path = getenv("KFL_CLANGXX");
+std::string get_clangpp_path(void) {
+    const char* clangpp_path = getenv("KFL_CLANGXX");
 
     if (!clangpp_path)
         clangpp_path = CLANGXX_PATH;
 
-    char* llvm_path = get_llvm_compiler_path();
-    unsigned int buffer_length = strlen(clangpp_path) + strlen(llvm_path) + 2;
-    char* result_path = (char*)malloc(buffer_length);
+    const char* llvm_path = get_llvm_compiler_path();
+    std::string result_path = llvm_path;
 
-    memset(result_path,0,buffer_length);
-    memcpy(result_path,llvm_path,strlen(llvm_path));
-    memcpy(&result_path[strlen(llvm_path)],"/",1);
-    memcpy(&result_path[strlen(llvm_path) + 1],clangpp_path,strlen(clangpp_path));
+    result_path += "/";
+    result_path += clangpp_path;
 
-    if (!access(result_path,F_OK))
+    if (!access(result_path.c_str(),F_OK))
         return result_path;
 
-    return clangpp_path;
+    result_path = clangpp_path;
+
+    return result_path;
 }
 
-const char* get_llvm_ar_path(void) {
-    char* llvm_ar_path = getenv("KFL_LLVM_AR");
+std::string get_llvm_ar_path(void) {
+    const char* llvm_ar_path = getenv("KFL_LLVM_AR");
 
     if (!llvm_ar_path)
         llvm_ar_path = LLVM_AR_PATH;
 
-    char* llvm_path = get_llvm_compiler_path();
-    unsigned int buffer_length = strlen(llvm_ar_path) + strlen(llvm_path) + 2;
-    char* result_path = (char*)malloc(buffer_length);
+    const char* llvm_path = get_llvm_compiler_path();
+    std::string result_path = llvm_path;
 
-    memset(result_path,0,buffer_length);
-    memcpy(result_path,llvm_path,strlen(llvm_path));
-    memcpy(&result_path[strlen(llvm_path)],"/",1);
-    memcpy(&result_path[strlen(llvm_path) + 1],llvm_ar_path,strlen(llvm_ar_path));
+    result_path += "/";
+    result_path += llvm_ar_path;
 
-    if (!access(result_path,F_OK))
+    if (!access(result_path.c_str(),F_OK))
         return result_path;
 
-    return llvm_ar_path;
+    result_path = llvm_ar_path;
+
+    return result_path;
 }
 
-const char* get_compiler_flags(void) {
-    char* compiler_flags = getenv("KFL_CFLAG");
+std::string get_compiler_flags(void) {
+    const char* compiler_flags = getenv("KFL_CFLAG");
+    std::string result;
 
     if (!compiler_flags)
-        return NULL;
+        return result;
 
-    return compiler_flags;
+    result = compiler_flags;
+
+    return result;
 }
 
 void print_parameters(char** parameter_list) {
@@ -105,6 +110,25 @@ void print_parameters(char** parameter_list) {
         printf("%s ",parameter_list[index]);
 
     printf("\n");
+}
+
+char* execute(const char* command) {
+    FILE* process_handle = popen(command,"r");
+    unsigned int buffer_length = 0;
+
+    fseek(process_handle,0,SEEK_END);
+
+    buffer_length = ftell(process_handle);
+
+    fseek(process_handle,0,SEEK_SET);
+
+    char* md5_buffer = (char*)malloc(buffer_length + 1);
+
+    memset(md5_buffer,0,buffer_length + 1);
+    fread(md5_buffer,1,buffer_length,process_handle);
+    pclose(process_handle);
+
+    return md5_buffer;
 }
 
 void replace_to_llvm_bitcode_output(const char* source_name,char* output_path) {
@@ -129,7 +153,7 @@ void replace_to_llvm_bitcode_output(const char* source_name,char* output_path) {
     }
 }
 
-char** build_klee_bitcode_compile_parameter(int argc,char** argv,int show_debug) {
+std::string build_klee_bitcode_compile_parameter(int argc,char** argv) {
     unsigned call_parameters_length = argc * sizeof(char*) * 64;
     char** call_parameters = (char**)malloc(call_parameters_length);
     unsigned link_input_file_length = argc * sizeof(char*) * 64;
@@ -208,7 +232,7 @@ char** build_klee_bitcode_compile_parameter(int argc,char** argv,int show_debug)
         } else if (strstr(argv[argv_index],".c") || strstr(argv[argv_index],".cpp")) {  //  Compile File ..
             if (!strcmp(argv[argv_index],CONFIGURE_INPUT_TEST_FILE)) {  //  ./configure comand : ../klee-clang conftest.c >&5
                 have_special_output_path = 1;
-                input_file_path = CONFIGURE_INPUT_TEST_FILE;
+                input_file_path = (char*)CONFIGURE_INPUT_TEST_FILE;
             } else {
                 is_compile_object = 1;
 
@@ -227,10 +251,12 @@ char** build_klee_bitcode_compile_parameter(int argc,char** argv,int show_debug)
 
         call_parameters[argv_index] = argv[argv_index];
     }
-
+    
     if (is_llvm_ar_link) {
-        call_parameters[0] = (char*)get_llvm_ar_path();
-        call_parameters[1] = "rcs";
+        std::string llvm_ar_path = get_llvm_ar_path();
+
+        call_parameters[0] = (char*)llvm_ar_path.c_str();
+        call_parameters[1] = (char*)"rcs";
         call_parameters[2] = output_file_path;
 
         int input_file_index = 0;
@@ -240,21 +266,22 @@ char** build_klee_bitcode_compile_parameter(int argc,char** argv,int show_debug)
 
         call_parameters[input_file_index + 3] = NULL;
     } else {
-        call_parameters[0] = (char*)get_clang_path();
-        const char* compiler_flags = get_compiler_flags();
+        std::string clang_path = get_clang_path();
+
+        call_parameters[0] = (char*)clang_path.c_str();
 
         if (is_compile_object) {
             if (!is_bingo_flag_version) {
-                call_parameters[argv_index++] = "-v";
+                call_parameters[argv_index++] = (char*)"-v";
             }
             if (!is_bingo_flag_emit_llvm) {
-                call_parameters[argv_index++] = "-emit-llvm";
+                call_parameters[argv_index++] = (char*)"-emit-llvm";
             }
             if (!is_bingo_flag_bitcode) {
-                call_parameters[argv_index++] = "-c";
+                call_parameters[argv_index++] = (char*)"-c";
             }
             if (!is_bingo_flag_debug_output) {
-                call_parameters[argv_index++] = "-g";
+                call_parameters[argv_index++] = (char*)"-g";
             }
             if (!have_special_output_path && NULL != input_file_path && !is_mutil_input_file) {
                 char* output_path = (char*)malloc(256);
@@ -262,42 +289,69 @@ char** build_klee_bitcode_compile_parameter(int argc,char** argv,int show_debug)
                 memset(output_path,0,256);
                 replace_to_llvm_bitcode_output(input_file_path,output_path);
 
-                call_parameters[argv_index] = "-o";
-                argv_index++;
-                call_parameters[argv_index] = output_path;
-                argv_index++;
-            }
-
-            while (compiler_flags) {
-                unsigned int offset = strstr(compiler_flags," ");
-
-                if (offset) {
-                    compiler_flags = &compiler_flags[offset + 1];
-                } else 
-                    compiler_flags = NULL;
+                call_parameters[argv_index++] = (char*)"-o";
+                call_parameters[argv_index++] = output_path;
             }
         }
 
         call_parameters[argv_index] = NULL;
     }
+    
+    printf("is_compile_object = %d,is_bingo_flag_emit_llvm = %d ,is_bingo_flag_bitcode = %d ,is_bingo_flag_debug_output = %d ,have_special_output_path = %d ,is_mutil_input_file=%d\n",
+        is_compile_object,is_bingo_flag_emit_llvm,is_bingo_flag_bitcode,is_bingo_flag_debug_output,have_special_output_path,is_mutil_input_file);
+    //print_parameters(call_parameters);
+    
+    std::string result;
 
-    printf("is_compile_object = %d,is_bingo_flag_emit_llvm = %d ,is_bingo_flag_bitcode = %d ,is_bingo_flag_debug_output = %d\n",
-        is_compile_object,is_bingo_flag_emit_llvm,is_bingo_flag_bitcode,is_bingo_flag_debug_output);
-    print_parameters(call_parameters);
+    for (int index = 0;NULL != call_parameters[index];++index) {
+        result += call_parameters[index];
+        result += " ";
+    }
 
-    return call_parameters;
+    if (!is_llvm_ar_link) {
+        std::string compiler_flags = get_compiler_flags();
+
+        if (!compiler_flags.empty())
+            result += compiler_flags;
+    }
+
+    printf("Argument : %s\n",result.c_str());
+
+    return result;
+}
+
+std::string build_compiler_parameter(int argc,char** argv) {
+    std::string result = get_clang_path();
+
+    result += " ";
+
+    for (int index = 1;index < argc;++index) {
+        result += argv[index];
+        result += " ";
+    }
+
+    return result;
 }
 
 
 int main(int argc,char** argv) {
+    printf(">>>>> Entry Klee-Clang >>>>>\n");
     print_parameters(argv);
 
-    char** call_parameters = build_klee_bitcode_compile_parameter(argc,argv,1);
+    std::string source_parameters = build_compiler_parameter(argc,argv);
+    std::string klee_compile_parameters = build_klee_bitcode_compile_parameter(argc,argv);
 
-    printf("execvp() = %d\n",execvp(call_parameters[0],call_parameters));
+    printf("Source Compile Command:\n");
+    
+    execute(source_parameters.c_str());
+
     printf("errno = %d\n",errno);
+    printf("Klee Compile Command:\n");
 
-    free(call_parameters);
+    execute(klee_compile_parameters.c_str());
+
+    printf("errno = %d\n",errno);
+    printf("<<<<< Exit Klee-Clang <<<<<\n");
 
     return 0;
 }

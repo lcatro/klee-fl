@@ -17,6 +17,7 @@
 #define CLANG_PATH "clang"
 #define CLANGXX_PATH "clang++"
 #define LLVM_AR_PATH "llvm-ar"
+#define LLVM_COMPILER_PATH "/usr/bin/"
 
 
 using namespace std;
@@ -29,41 +30,87 @@ typedef std::map<std::string,std::string> md5_list;
 int is_debug_output = 0;
 
 
-const char* get_clang_path(void) {
-    char* clang_path = getenv("KFL_CLANG");
+const char* get_llvm_compiler_path(void) {
+    char* llvm_compiler_path = getenv("LLVM_COMPILER_PATH");
+
+    if (!llvm_compiler_path)
+        return LLVM_COMPILER_PATH;
+
+    return llvm_compiler_path;
+}
+
+std::string get_clang_path(void) {
+    const char* clang_path = getenv("KFL_CLANG");
 
     if (!clang_path)
-        return CLANG_PATH;
+        clang_path = CLANG_PATH;
 
-    return clang_path;
+    const char* llvm_path = get_llvm_compiler_path();
+    std::string result_path = llvm_path;
+
+    result_path += "/";
+    result_path += clang_path;
+
+    if (!access(result_path.c_str(),F_OK))
+        return result_path;
+
+    result_path = clang_path;
+
+    return result_path;
 }
 
-const char* get_clangpp_path(void) {
-    char* clangpp_path = getenv("KFL_CLANGXX");
+std::string get_clangpp_path(void) {
+    const char* clangpp_path = getenv("KFL_CLANGXX");
 
     if (!clangpp_path)
-        return CLANGXX_PATH;
+        clangpp_path = CLANGXX_PATH;
 
-    return clangpp_path;
+    const char* llvm_path = get_llvm_compiler_path();
+    std::string result_path = llvm_path;
+
+    result_path += "/";
+    result_path += clangpp_path;
+
+    if (!access(result_path.c_str(),F_OK))
+        return result_path;
+
+    result_path = clangpp_path;
+
+    return result_path;
 }
 
-const char* get_llvm_ar_path(void) {
-    char* llvm_ar_path = getenv("KFL_LLVM_AR");
+std::string get_llvm_ar_path(void) {
+    const char* llvm_ar_path = getenv("KFL_LLVM_AR");
 
     if (!llvm_ar_path)
-        return LLVM_AR_PATH;
+        llvm_ar_path = LLVM_AR_PATH;
 
-    return llvm_ar_path;
+    const char* llvm_path = get_llvm_compiler_path();
+    std::string result_path = llvm_path;
+
+    result_path += "/";
+    result_path += llvm_ar_path;
+
+    if (!access(result_path.c_str(),F_OK))
+        return result_path;
+
+    result_path = llvm_ar_path;
+
+    return result_path;
 }
 
-const char* get_compiler_flags(void) {
-    char* compiler_flags = getenv("KFL_CFLAG");
+std::string get_compiler_flags(void) {
+    const char* compiler_flags = getenv("KFL_CFLAG");
+    std::string result;
 
     if (!compiler_flags)
-        return NULL;
+        return result;
 
-    return compiler_flags;
+    result = compiler_flags;
+
+    return result;
 }
+
 
 std::string get_file_md5(const string& path) {
     std::string command = "md5 ";
@@ -86,6 +133,12 @@ std::string get_file_md5(const string& path) {
     }
 
     return "";
+}
+
+void execute(const char* command) {
+    FILE* process_handle = popen(command,"r");
+
+    pclose(process_handle);
 }
 
 path_list* list_dir(const string& path) {
@@ -177,21 +230,21 @@ void print_parameters(char** parameter_list) {
 }
 
 void print_help(void) {
-    printf("Using : [ KFL_CFLAG=\"-I.\" ] klee-build -bc  %%Fuzzer_Path%% | -bf %%Project_Build_Dir%%\n");
-    printf("  -bc : build fuzzer to LLVM BitCode\n");
-    printf("  -bf : build fuzzer for klee fuzzing\n");
+    printf("Using : [ KFL_CFLAG=\"-I.\" ] klee-build %%Fuzzer_Path%% %%Project_Build_Dir%%\n");
+    //printf("  -bc : build fuzzer to LLVM BitCode\n");
+    //printf("  -bf : build fuzzer for klee fuzzing\n");
     printf("  Fuzzer_Path : Custom Fuzzer Path\n");
     printf("  Project_Build_Dir : Project Path\n");
     printf("  KFL_CFLAG : Custom Compiler Flags\n");
     printf("Example : \n");
-    printf("  ./klee-build -bc ./test_code/test_fuzzing_entry.c\n");
-    printf("  ./klee-build -bf ./test_code\n");
+    printf("  ./klee-build -bc ./test_code/test_fuzzing_entry.c ./test_code/\n");
+    //printf("  ./klee-build -bc ./test_code/test_fuzzing_entry.c\n");
+    //printf("  ./klee-build -bf ./test_code\n");
 }
 
 int compile_fuzzer_to_bitcode(const char* fuzzer_path) {
-    unsigned call_parameters_length = sizeof(char*) * 32;
-    char** call_parameters = (char**)malloc(call_parameters_length);
-    const char* compiler_flags = get_compiler_flags();
+    std::string call_parameters;
+    std::string compiler_flags = get_compiler_flags();
     std::string output_path = fuzzer_path;
 
     if (-1 != output_path.rfind(".c"))
@@ -199,50 +252,21 @@ int compile_fuzzer_to_bitcode(const char* fuzzer_path) {
     else if (-1 != output_path.rfind(".cpp"))
         output_path = output_path.substr(0,output_path.rfind(".cpp")) + ".bc";
 
-    call_parameters[0] = (char*)get_clang_path();
-    call_parameters[1] = (char*)"-g";
-    call_parameters[2] = (char*)"-emit-llvm";
-    call_parameters[3] = (char*)"-c";
-    call_parameters[4] = (char*)fuzzer_path;
-    call_parameters[5] = (char*)"-o";
-    call_parameters[6] = (char*)output_path.c_str();
+    call_parameters += get_clang_path();
+    call_parameters += (char*)" -g ";
+    call_parameters += (char*)" -emit-llvm ";
+    call_parameters += (char*)" -c ";
+    call_parameters += (char*)fuzzer_path;
+    call_parameters += (char*)" -o ";
+    call_parameters += (char*)output_path.c_str();
+    call_parameters += (char*)" ";
 
-    unsigned int call_parameters_index = 0;
+    if (!compiler_flags.empty())
+        call_parameters += compiler_flags;
 
-    if (NULL != compiler_flags) {
-        std::string compiler_flags_string = compiler_flags;
-
-        while (compiler_flags_string.length()) {
-            char* temp_string = NULL;
-            unsigned int space_offset = compiler_flags_string.find(" ");
-
-            if (-1 != space_offset) {
-                temp_string = (char*)malloc(space_offset + 1);
-
-                memset(temp_string,0,space_offset + 1);
-                memcpy(temp_string,compiler_flags_string.c_str(),space_offset);
-
-                compiler_flags_string = compiler_flags_string.substr(0,space_offset + 1);
-            } else {
-                temp_string = (char*)malloc(compiler_flags_string.length() + 1);
-
-                memset(temp_string,0,compiler_flags_string.length() + 1);
-                memcpy(temp_string,compiler_flags_string.c_str(),compiler_flags_string.length());
-
-                compiler_flags_string = "";
-            }
-
-            call_parameters[7 + call_parameters_index++] = temp_string;
-        }
-    }
-
-    call_parameters[7 + call_parameters_index] = (char*)NULL;
-
-    print_parameters(call_parameters);
-    printf("execvp() = %d\n",execvp(call_parameters[0],call_parameters));
+    printf("Argument : %s\n",call_parameters.c_str());
+    execute(call_parameters.c_str());
     printf("errno = %d\n",errno);
-
-    free(call_parameters);
 
     if (errno)
         return 0;
@@ -251,33 +275,30 @@ int compile_fuzzer_to_bitcode(const char* fuzzer_path) {
 }
 
 int compile_fuzzer_to_lib(const char* project_path,path_list* llvm_bitcode_file_list,unsigned int file_count) {
-    unsigned call_parameters_length = sizeof(char*) * 1024;
-    char** call_parameters = (char**)malloc(call_parameters_length);
+    std::string call_parameters;
     std::string output_path = project_path;
     output_path += "/klee_fuzzer.bca";
 
-    call_parameters[0] = (char*)get_llvm_ar_path();
-    call_parameters[1] = (char*)"rsc";
-    call_parameters[2] = (char*)output_path.c_str();
+    call_parameters += get_llvm_ar_path();
+    call_parameters += (char*)" rsc ";
+    call_parameters += (char*)output_path.c_str();
+    call_parameters += (char*)" ";
 
     unsigned int file_index = 0;
     path_list* filter_list = filter_similar(llvm_bitcode_file_list);
 
-    for (path_list::iterator file_list_iterator = filter_list->begin();file_list_iterator != filter_list->end();++file_list_iterator,++file_index)
-        call_parameters[3 + file_index] = (char*)file_list_iterator->c_str();
+    for (path_list::iterator file_list_iterator = filter_list->begin();file_list_iterator != filter_list->end();++file_list_iterator,++file_index) {
+        call_parameters += (char*)file_list_iterator->c_str();
+        call_parameters += " ";
+    }
 
-    call_parameters[3 + file_index] = NULL;
-
-    print_parameters(call_parameters);
+    printf("Argument : %s\n",call_parameters.c_str());
 
     if (!access(output_path.c_str(),F_OK))
         remove(output_path.c_str());
 
-
-    printf("execvp() = %d\n",execvp(call_parameters[0],call_parameters));
+    execute(call_parameters.c_str());
     printf("errno = %d\n",errno);
-
-    free(call_parameters);
 
     delete filter_list;
 
@@ -294,49 +315,47 @@ int main(int argc,char** argv) {
         return 1;
     }
 
-    if (!strcmp(argv[1],"-bc")) {
-        char* fuzzer_path = argv[2];
+    char* fuzzer_path = argv[1];
+    char* project_path = argv[2];
 
-        printf("Ready to Compiler Fuzzer \n");
+    printf("Ready to Compiler Fuzzer \n");
 
-        if (!compile_fuzzer_to_bitcode(fuzzer_path)) {
-            printf("Compile Fuzzer to BitCode Error ! ..\n");
+    if (!compile_fuzzer_to_bitcode(fuzzer_path)) {
+        printf("Compile Fuzzer to BitCode Error ! ..\n");
 
-            return 1;
-        }
-    } else if (!strcmp(argv[1],"-bf")) {
-        char* project_path = argv[2];
-        path_list* llvm_bitcode_file_list = list_dir(std::string(project_path));
-
-        if (NULL == llvm_bitcode_file_list) {
-            printf("project_path(%s) is Error Dir Path ..\n",project_path);
-
-            return 1;
-        }
-
-        unsigned int file_count = print_dir_file(llvm_bitcode_file_list);
-
-        printf("project .bc file count = %d \n",file_count);
-
-        if (!file_count) {
-            printf("project_path(%s) have not LLVM BitCode File ..\n",project_path);
-            printf("Check it is you compile the project with klee-clang ?..");
-
-            return 1;
-        }
-
-        printf("Ready to Compiler Lib \n");
-
-        if (!compile_fuzzer_to_lib(project_path,llvm_bitcode_file_list,file_count)) {
-            printf("Link Fuzzer to lib Error ! ..\n");
-
-            return 1;
-        }
-
-        printf("Compile All Success ..\n");
-
-        delete llvm_bitcode_file_list;
+        return 1;
     }
+
+    path_list* llvm_bitcode_file_list = list_dir(std::string(project_path));
+
+    if (NULL == llvm_bitcode_file_list) {
+        printf("project_path(%s) is Error Dir Path ..\n",project_path);
+
+        return 1;
+    }
+
+    unsigned int file_count = print_dir_file(llvm_bitcode_file_list);
+
+    printf("project .bc file count = %d \n",file_count);
+
+    if (!file_count) {
+        printf("project_path(%s) have not LLVM BitCode File ..\n",project_path);
+        printf("Check it is you compile the project with klee-clang ?..");
+
+        return 1;
+    }
+
+    printf("Ready to Compiler Lib \n");
+
+    if (!compile_fuzzer_to_lib(project_path,llvm_bitcode_file_list,file_count)) {
+        printf("Link Fuzzer to lib Error ! ..\n");
+
+        return 1;
+    }
+
+    printf("Compile All Success ..\n");
+
+    delete llvm_bitcode_file_list;
 
     return 0;
 }

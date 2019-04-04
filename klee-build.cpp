@@ -323,7 +323,6 @@ int main(int argc,char** argv) {
     }
 
     char* fuzzer_path = argv[1];
-    char* project_path = argv[2];
 
     printf("Ready to Compiler Fuzzer \n");
 
@@ -335,23 +334,30 @@ int main(int argc,char** argv) {
         return 1;
     }
 
-    path_list* llvm_bitcode_file_list = NULL;
+    path_list* llvm_bitcode_file_list = new path_list;
 
-    if (3 == argc) {
-        llvm_bitcode_file_list = list_dir(std::string(project_path));
+    for (int import_path_index = 2;import_path_index < argc;++import_path_index) {
+        char* import_path = argv[import_path_index];
+        struct stat get_file_stat = {0};
 
-        if (NULL == llvm_bitcode_file_list) {
-            printf("project_path(%s) is Error Dir Path ..\n",project_path);
+        if (stat(import_path,&get_file_stat)) {
+            printf("import_path = %s not Found ! ..\n",import_path);
 
             return 1;
         }
-    } else {
-        llvm_bitcode_file_list = new path_list;
 
-        for (int import_path_index = 3;import_path_index < argc;++import_path_index)
-            llvm_bitcode_file_list->push_back(std::string(argv[import_path_index]));
+        if (get_file_stat.st_mode & S_IFDIR) {
+            path_list* import_path_file_list = list_dir(std::string(import_path));
 
-        llvm_bitcode_file_list->push_back(output_bitcode_path);
+            for (path_list::iterator file_path  = import_path_file_list->begin();
+                                     file_path != import_path_file_list->end();
+                                     ++file_path)
+                llvm_bitcode_file_list->push_back(*file_path);
+
+            delete import_path_file_list;
+        } else {
+            llvm_bitcode_file_list->push_back(import_path);
+        }
     }
 
     unsigned int file_count = print_dir_file(llvm_bitcode_file_list);
@@ -359,7 +365,7 @@ int main(int argc,char** argv) {
     printf("project .bc file count = %d \n",file_count);
 
     if (!file_count) {
-        printf("project_path(%s) have not LLVM BitCode File ..\n",project_path);
+        printf("import_path have not LLVM BitCode File ..\n");
         printf("Check it is you compile the project with klee-clang ?..");
 
         return 1;
@@ -367,7 +373,7 @@ int main(int argc,char** argv) {
 
     printf("Ready to Compiler Lib \n");
 
-    compile_fuzzer_to_lib(project_path,llvm_bitcode_file_list,file_count);
+    compile_fuzzer_to_lib(".",llvm_bitcode_file_list,file_count);
 
     printf("Compile All Success ..\n");
 

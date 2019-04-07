@@ -237,6 +237,11 @@ std::string build_klee_bitcode_compile_parameter(int argc,char** argv) {
 
             is_compile_object = 1;
 
+            if (input_file_count > 1) {
+                is_llvm_ar_link = 1;
+                is_mutil_input_file = 1;
+            }
+
             continue;
         } else if (strstr(argv[argv_index],".c") || strstr(argv[argv_index],".cpp")) {  //  Compile File ..
             if (!strcmp(argv[argv_index],CONFIGURE_INPUT_TEST_FILE)) {  //  ./configure comand : ../klee-clang conftest.c >&5

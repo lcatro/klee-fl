@@ -288,10 +288,10 @@ std::string compile_fuzzer_to_bitcode(const char* fuzzer_path) {
 void compile_fuzzer_to_lib(const char* project_path,path_list* llvm_bitcode_file_list,unsigned int file_count) {
     std::string call_parameters;
     std::string output_path = project_path;
-    output_path += "/klee_fuzzer.bca";
+    output_path += "/klee_fuzzer.link.bc";
 
-    call_parameters += get_llvm_ar_path();
-    call_parameters += (char*)" rsc ";
+    call_parameters += "llvm-link";//get_llvm_ar_path();
+    call_parameters += " -o ";//(char*)" rsc ";
     call_parameters += (char*)output_path.c_str();
     call_parameters += (char*)" ";
 
